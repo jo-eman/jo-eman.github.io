@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>GraphQL Query</title>
+    <style>
+      /* Styles for the container, inputs, and button */
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+      }
+      .input-container {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+      }
+      .input-container label {
+        margin-right: 10px;
+      }
+      .input-container input {
+        padding: 5px;
+        border-radius: 5px;
+        border: none;
+        box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.2);
+      }
+      .button {
+        padding: 10px 20px;
+        background-color: #0078d4;
+        color: white;
+        border-radius: 5px;
+        border: none;
+        cursor: pointer;
+      }
+      .button:hover {
+        background-color: #005a9e;
+      }
+
+      /* Styles for the login form */
+      #login-form {
+        display: block;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 20px;
+        background-color: white;
+        border-radius: 5px;
+        box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.2);
+      }
+      #login-form label {
+        display: block;
+        margin-bottom: 10px;
+      }
+      #login-form input {
+        display: block;
+        width: 100%;
+        padding: 5px;
+        border-radius: 5px;
+        border: none;
+        box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.2);
+        margin-bottom: 10px;
+      }
+      #login-form .button {
+        display: block;
+        margin-top: 10px;
+      }
+      </style>
+  </head>
+  <body>
+    <body>
+      <div class="container">
+        <h1>GraphQL Query</h1>
+        <div id="login-form">
+          <label for="username">Username:</label>
+          <input type="text" id="username" />
+          <label for="password">Password:</label>
+          <input type="password" id="password" />
+          <button class="button" onclick="getToken()">Login</button>
+        </div>
+        <div class="input-container">
+          <label for="id">ID:</label>
+          <input type="text" id="id" disabled />
+        </div>
+        <button class="button" onclick="submitQuery()" disabled>Submit</button>
+        <div id="result"></div>
+      </div>
+
+      <script>
+        async function getToken() {
+          const username = document.getElementById("username").value;
+          const password = document.getElementById("password").value;
+          const xhr = new XMLHttpRequest();
+          xhr.open("POST", "https://01.gritlab.ax/api/auth/signin", true);
+      
+          xhr.setRequestHeader("Content-Type", "application/json");
+          xhr.setRequestHeader(
+            "Authorization",
+            "Basic " + btoa(username + ":" + password)
+          );
+          xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4) {
+              if (xhr.status === 200) {
+                const json = JSON.parse(xhr.responseText);
+                console.log(json);
+                document.getElementById("id").disabled = false;
+                document.getElementById("id").value = json.id;
+                document.getElementById("login-form").style.display = "none";
+                document.getElementById("result").innerHTML = "Logged in";
+                document.getElementById("result").style.color = "green";
+                document.getElementById("result").style.fontWeight = "bold";
+              } else if (xhr.status === 401) {
+                document.getElementById("result").innerHTML = "Wrong username or password";
+                document.getElementById("result").style.color = "red";
+                document.getElementById("result").style.fontWeight = "bold";
+              }
+            }
+          };
+          const data = JSON.stringify({ username: username, password: password });
+          xhr.send(data);
+      
+          document.getElementById("submit").disabled = false;
+        }
+      
+        async function submitQuery() {
+          const id = document.getElementById("id").value;
+          const baseUrl = "https://01.gritlab.ax/api/graphql-engine/v1/graphql";
+      
+          // get JWT token from https://01.gritlab.ax/api/auth/signin with Basic authentication with base64 encoding
+      
+          const xhr = new XMLHttpRequest();
+          xhr.open("POST", "https://01.gritlab.ax/api/auth/signin", true);
+      
+          xhr.setRequestHeader("Content-Type", "application/json");
+          const token = await getToken();
+          xhr.setRequestHeader("Authorization", "Bearer " + token);
+      
+          const query = `query {
+            user_by_pk(id: "${id}") {
+              id
+              login
+              auditRatio
+            }
+          }`;
+          const query2 = `query {
+            user(where:{id:{_eq:"${id}"}}) {
+              transactions {
+                amount
+                type
+              }
+            }
+          }`;
+      
+          const response = await fetch(baseUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + token,
+            },
+            body: JSON.stringify({ query: query }),
+          });
+          const data = await response.json();
+          if (data.errors) {
+            console.log(data.errors);
+          } else {
+            console.log(data.data);
+            //data {user_by_pk: {id: 408, login: "Karljohannes"}}
+          }
+      
+          const response2 = await fetch(baseUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + token,
+            },
+            body: JSON.stringify({ query: query2 }),
+          });
+          const data2 = await response2.json();
+          if (data2.errors) {
+            console.log(data2.errors);
+          } else {
+            console.log(data2.data);
+          }
+        }
+      </script>
+      
+      
+      
+      
+    </body>
+    </html>
+
